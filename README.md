@@ -1,6 +1,6 @@
 # Java-Core Practice
 
-============================================
+
 1. [ConcurrencyWithCompletableFuture](src/com/learn/java/ConcurrencyWithCompletableFuture3.java)
 2. [HelloWorld](src/com/learn/java/HelloWorld.java)
 3. [Java7Features](src/com/learn/java/Java7Features.java)
