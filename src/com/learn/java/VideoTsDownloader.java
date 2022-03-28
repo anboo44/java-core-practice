@@ -2,7 +2,11 @@ package com.learn.java;
 
 import java.io.*;
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URL;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -25,7 +29,8 @@ import java.util.stream.Collectors;
 public class VideoTsDownloader {
     public static final int DEFAULT_BUFFER_SIZE = 8192;
 
-    public static final String PART_FOLDER_PATH = "G:\\Projects\\ts\\out";
+//    public static final String PART_FOLDER_PATH = "G:\\Projects\\ts\\out";
+    public static final String PART_FOLDER_PATH = "/tmp/out";
     public static final String RESULT_FOLDER_PATH = "G:\\Projects\\ts\\result";
 
     public static String firstURLPath = "dsds";
@@ -166,6 +171,21 @@ public class VideoTsDownloader {
                 outputStream.write(bytes, 0, read);
             }
         }
+    }
+
+    // Using HttpClient In Java 11
+    private void downloadV2(String url, int idx) throws Exception {
+        File file = new File(PART_FOLDER_PATH + "/" + idx + ".ts");
+
+        var request = HttpRequest.newBuilder()
+                .uri(new URI(url))
+                .version(HttpClient.Version.HTTP_2)
+                .GET()
+                .build();
+
+        HttpClient.newBuilder()
+                  .build()
+                  .send(request, HttpResponse.BodyHandlers.ofFile(file.toPath()));
     }
 
     private List<String> getUrlList() {
