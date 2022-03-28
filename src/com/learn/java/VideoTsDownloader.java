@@ -29,10 +29,12 @@ import java.util.stream.Collectors;
 public class VideoTsDownloader {
     public static final int DEFAULT_BUFFER_SIZE = 8192;
 
-//    public static final String PART_FOLDER_PATH = "G:\\Projects\\ts\\out";
-    public static final String PART_FOLDER_PATH = "/tmp/out";
+    public static final String PART_FOLDER_PATH = "G:\\Projects\\ts\\out";
     public static final String RESULT_FOLDER_PATH = "G:\\Projects\\ts\\result";
 
+    // Ts link is formatted: https://domain/path_1/file_index.ts
+    // -> firstURLPath = "https://domain/path_1/file_"
+    // -> lastURLPath = ".ts"
     public static String firstURLPath = "dsds";
     public static String lastURLPath = ".ts?e=1648409903&l=0&h=121c06d581339e0cad6cade0bd605f7a";
 
