@@ -35,11 +35,11 @@ public class VideoTsDownloader {
     // Ts link is formatted: https://domain/path_1/file_index.ts
     // -> firstURLPath = "https://domain/path_1/file_"
     // -> lastURLPath = ".ts"
-    public static String firstURLPath = "dsds";
-    public static String lastURLPath = ".ts?e=1648409903&l=0&h=121c06d581339e0cad6cade0bd605f7a";
+    public static String firstURLPath = "";
+    public static String lastURLPath = "";
 
-    public static int LINK_IDX_START = 17;
-    public static int LINK_IDX_END   = 73;
+    public static int LINK_IDX_START = 8;
+    public static int LINK_IDX_END   = 1143;
     public static int GROUP_SIZE     = 200;
 
     public static AtomicInteger counter = new AtomicInteger(0);

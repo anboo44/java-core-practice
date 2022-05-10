@@ -9,3 +9,7 @@
 6. [MultiThread](src/com/learn/java/MultiThread.java)
 7. [Reactive](src/com/learn/java/Reactive.java)
 8. [VideoTsDownloader](src/com/learn/java/VideoTsDownloader.java)
+
+## FFMPEG
+
+- command cut video: ffmpeg -ss 01:33:30 -to 01:55:40  -i video.mp4 -c copy part_4-4.mp4
