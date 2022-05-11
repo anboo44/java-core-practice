@@ -7,22 +7,30 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class AudioVideoTsDownloader {
     public static final int DEFAULT_BUFFER_SIZE = 8192;
-    public static int IDX_START = 1;
-    public static int IDX_END = 4; //1143;
-    public static int GROUP_SIZE = 2; //200;
+    public static int IDX_START = 0;
+    public static int IDX_END = 841;
+    public static int DIFF = 9;
+    public static int A_IDX_START = 0;
+    public static int A_IDX_END = 0;
+    public static int V_IDX_START = 0;
+    public static int V_IDX_END = 0;
+    public static int GROUP_SIZE = 200; //200;
 
-    private static final String AUDIO_URL = "";
-    private static final String VIDEO_URL = "";
+    private static final String AUDIO_URL = "https://bcboltbde696aa-a.akamaihd.net/media/v1/hls/v4/clear/6303911335001/135a1880-3ae7-405f-9a98-d9febd220684/2ed059b8-2a5f-4ee0-941d-7cd3a2b7128c/3x/segment1146.ts?akamai_token=exp=1652301170~acl=/media/v1/hls/v4/clear/6303911335001/135a1880-3ae7-405f-9a98-d9febd220684/2ed059b8-2a5f-4ee0-941d-7cd3a2b7128c/*~hmac=5eebb69f8faff796feb4a4298cd0e8e5c696b05b18fd72da4a2a141acdd76108";
+    private static final String VIDEO_URL = "https://bcboltbde696aa-a.akamaihd.net/media/v1/hls/v4/clear/6303911335001/135a1880-3ae7-405f-9a98-d9febd220684/caf3ad99-c1b1-457a-a3ff-ed95c0b3423d/3x/segment1136.ts?akamai_token=exp=1652301165~acl=/media/v1/hls/v4/clear/6303911335001/135a1880-3ae7-405f-9a98-d9febd220684/caf3ad99-c1b1-457a-a3ff-ed95c0b3423d/*~hmac=18b39b178e172a52f87ff01f8ca0152a404d807031554a1df56bbf542fad0c9f";
     private static final String PREFIX_PATTERN = ".+segment";
     private static final String POSTFIX_PATTERN = ".ts.+";
 
+    public static final String AUDIO_FOLDER_TEMP = "G:/Projects/ts/temp/audio/temp";
     public static final String AUDIO_FOLDER = "G:/Projects/ts/temp/audio";
+    public static final String VIDEO_FOLDER_TEMP = "G:/Projects/ts/temp/video/temp";
     public static final String VIDEO_FOLDER = "G:/Projects/ts/temp/video";
     public static final String TEMP_FOLDER = "G:/Projects/ts/temp";
     public static final String OUTPUT_TEMP_FOLDER = "G:/Projects/ts/output/temp";
@@ -35,10 +43,18 @@ public class AudioVideoTsDownloader {
 
     private void execute() throws ExecutionException, InterruptedException {
         prepareStorageFolder();
-        download(true);
-        download(false);
-        mergeAudioVideo();
-        mergeLastTime();
+        var result = download(false, new AtomicInteger(0))
+            .thenCombineAsync(download(true, new AtomicInteger(0)), (s1, s2) -> {
+                try {
+                    mergeAudioVideo();
+                } catch (ExecutionException | InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+                mergeLastTime();
+                return "DONE";
+            });
+
+        result.get();
     }
 
     private void mergeLastTime() {
@@ -94,12 +110,33 @@ public class AudioVideoTsDownloader {
         runCommands(commands);
     }
 
-    private void mergeAudioVideo() {
+    private void mergeAudioVideo() throws ExecutionException, InterruptedException {
         System.out.println("===========[ Start to merge Audio & Video files ]=======================");
 
-        var commands = buildMergeAudioVideoCommand();
-        runCommands(commands);
+        var futureList = new ArrayList<CompletableFuture<Void>>();
+        var futureAudioList = new ArrayList<CompletableFuture<Void>>();
+        var futureVideoList = new ArrayList<CompletableFuture<Void>>();
 
+//        var commands = buildMergeAudioVideoCommand();
+        var commands = List.of("");
+//        var audioCommands = buildMergeAudioVideoCommand();
+//        var videoCommands = buildMergeAudioVideoCommand();
+
+
+        for (int i = 0; i < commands.size(); i++) {
+            var command = commands.get(i);
+            var result = CompletableFuture.runAsync(() -> {
+                try {
+                    runCommands(List.of(command));
+                } catch (Exception e) {
+                    System.out.println("ERROR: " + e.getMessage());
+                }
+            });
+            futureList.add(result);
+        }
+
+        var result = CompletableFuture.allOf(futureList.toArray(new CompletableFuture[0]));
+        result.get();
         System.out.println("===========[ Finish to merge Audio & Video files ]=======================");
     }
 
@@ -108,23 +145,32 @@ public class AudioVideoTsDownloader {
             try {
                 ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c", command);
                 builder.redirectErrorStream(true);
-                builder.start();
+                Process p = builder.start();
+                BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()));
+                String line;
+                while (true) {
+                    line = r.readLine();
+                    if (line == null) break;
+                }
             } catch (Exception e) {
                 System.out.println(e.getMessage());
             }
         });
     }
 
-    private List<String> buildMergeAudioVideoCommand() {
+    private List<String> buildMergeAudioVideoCommand(boolean isAudio) {
+        var start = isAudio ? A_IDX_START: V_IDX_START;
+        var end = isAudio ? A_IDX_END: V_IDX_END;
+
         List<String> commandList = new ArrayList<>();
-        for (int i = IDX_START; i <= IDX_END; i++) {
+        for (int i = 0; i < (end - start); i++) {
             var command = String.format("ffmpeg -i %s/%d.ts -i %s/%d.ts -c:v copy -c:a aac %s/%d.ts", AUDIO_FOLDER, i, VIDEO_FOLDER, i, TEMP_FOLDER, i);
             commandList.add(command);
         }
         return commandList;
     }
 
-    private void download(boolean isAudio) throws ExecutionException, InterruptedException {
+    private CompletableFuture<Void> download(boolean isAudio, AtomicInteger counter) throws ExecutionException, InterruptedException {
         String baseUrl = "";
         String storedFolder = "";
         if (isAudio) {
@@ -135,20 +181,21 @@ public class AudioVideoTsDownloader {
             storedFolder = VIDEO_FOLDER;
         }
 
-        var urls = getUrlList(baseUrl);
-        download(urls, storedFolder);
+        var urls = getUrlList(baseUrl, isAudio);
+        return download(urls, storedFolder, counter);
     }
 
-    private void download(List<String> urls, String storedFolder) throws ExecutionException, InterruptedException {
+    private CompletableFuture<Void> download(List<String> urls, String storedFolder, AtomicInteger counter) throws ExecutionException, InterruptedException {
         var futureList = new ArrayList<CompletableFuture<Void>>();
 
         for(int i = 0; i < urls.size(); i++) {
-            int idx    = i + 1;
+            int idx    = i;
             String url = urls.get(i);
 
             var result = CompletableFuture.runAsync(() -> {
                 try {
                     download(url, idx, storedFolder);
+                    System.out.println("=====[ Counter: " + counter.getAndIncrement() + " ]======");
                 } catch (Exception e) {
                     System.out.println("ERROR: " + e.getMessage());
                 }
@@ -157,8 +204,9 @@ public class AudioVideoTsDownloader {
         }
 
         var result = CompletableFuture.allOf(futureList.toArray(new CompletableFuture[0]));
-        result.get();
-        System.out.printf("======[ All files are stored at: %s ]=====================\n", storedFolder);
+        return result.thenRun(() -> {
+            System.out.printf("======[ All files are stored at: %s ]=====================\n", storedFolder);
+        });
     }
 
     private void download(String url, int idx, String storedFolder) throws Exception {
@@ -180,11 +228,13 @@ public class AudioVideoTsDownloader {
 
     private void prepareStorageFolder() {
         var audioFolder = new File(AUDIO_FOLDER);
+        var audioFolderTemp = new File(AUDIO_FOLDER_TEMP);
         var videoFolder = new File(VIDEO_FOLDER);
+        var videoFolderTemp = new File(VIDEO_FOLDER_TEMP);
         var tempFolder = new File(TEMP_FOLDER);
         var outputFolderTemp = new File(OUTPUT_TEMP_FOLDER);
 
-        var folders = List.of(audioFolder, videoFolder, tempFolder, outputFolderTemp);
+        var folders = List.of(audioFolder, videoFolder, tempFolder, outputFolderTemp, audioFolderTemp, videoFolderTemp);
         folders.forEach(folder -> {
             if (!folder.exists()) {
                 folder.mkdirs();
@@ -199,10 +249,13 @@ public class AudioVideoTsDownloader {
         });
     }
 
-    private List<String> getUrlList(String baseUrl) {
+    private List<String> getUrlList(String baseUrl, boolean isAudio) {
         var urls = new ArrayList<String>();
-        for(int i = IDX_START; i <= IDX_END; i++) {
-            var url = buildUrlWithIdx(baseUrl, i);
+        int start = isAudio ? A_IDX_START: V_IDX_START;
+        int end = isAudio ? A_IDX_END: V_IDX_END;
+
+        for(int i = start; i <= end; i++) {
+            String url = buildUrlWithIdx(baseUrl, i);
             urls.add(url);
         }
 
