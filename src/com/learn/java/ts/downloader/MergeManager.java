@@ -6,7 +6,6 @@ import java.io.InputStreamReader;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 public interface MergeManager {
@@ -35,7 +34,7 @@ class MergeManagerImpl implements MergeManager {
 
         // Process
         var commands = commandBuilder.getMergedCommand(files, storageFolder);
-        commands.forEach(v -> runCommand(v, false));
+        runCommandAsync(commands);
 
         // Handle result
         var mergedFiles = storageFolder.listFiles();
@@ -63,28 +62,15 @@ class MergeManagerImpl implements MergeManager {
         }
     }
 
-    private CompletableFuture<List<Void>> runCommandAsync(List<String> commands) {
+    private List<Void> runCommandAsync(List<String> commands) {
         var futures = commands.stream().map(v -> runCommandAsync(v , false)).collect(Collectors.toList());
-        return sequence(futures);
+        return sequence(futures).join();
     }
 
     private CompletableFuture<Void> runCommandAsync(String command, boolean showLog) {
         return CompletableFuture.runAsync(() -> {
-            try {
-                ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c", command);
-                builder.redirectErrorStream(true);
-                Process p = builder.start();
-                BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()));
-                String line;
-                while (true) {
-                    line = r.readLine();
-                    if (line == null) break;
-                    if (showLog) System.out.println(line);
-                }
-            } catch (Exception e) {
-                System.out.println("ERROR");
-            }
-        }, Executors.newFixedThreadPool(8));
+            runCommand(command, showLog);
+        });
     }
 
     private Void runCommand(String command, boolean showLog) {
