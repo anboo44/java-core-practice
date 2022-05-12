@@ -27,7 +27,7 @@ class MergeManagerImpl implements MergeManager {
 
     @Override
     public File merge(List<File> files, String baseFolder) {
-        System.out.println("========[ START TO MERGE FILE LIST ]============");
+        System.out.printf("========[ START TO MERGE FILE LIST: %s ]============\n", baseFolder);
         // Setting
         var rdValue = UUID.randomUUID().toString();
         var storageFolder = new File(baseFolder + "/" + rdValue);
@@ -35,9 +35,7 @@ class MergeManagerImpl implements MergeManager {
 
         // Process
         var commands = commandBuilder.getMergedCommand(files, storageFolder);
-        commands.forEach(this::runCommand);
-//        var futureResults = runCommandAsync(commands);
-//        return futureResults.
+        commands.forEach(v -> runCommand(v, false));
 
         // Handle result
         var mergedFiles = storageFolder.listFiles();
@@ -54,21 +52,23 @@ class MergeManagerImpl implements MergeManager {
         if (audio == null || video == null) return null;
 
         System.out.println("========[ START TO MERGE AUDIO & VIDEO FILES ]============");
+        System.out.printf("==========[ Audio file name: %s ]============\n", audio.getPath());
+        System.out.printf("==========[ Video file name: %s ]============\n", video.getPath());
         var storageFolder = new File(baseFolder);
         var command = commandBuilder.getMergedCommand(video, audio, storageFolder);
         try {
-            return runCommandAsync(command).get();
+            return runCommand(command, true);
         } catch (Exception e) {
             return null;
         }
     }
 
     private CompletableFuture<List<Void>> runCommandAsync(List<String> commands) {
-        var futures = commands.stream().map(this::runCommandAsync).collect(Collectors.toList());
+        var futures = commands.stream().map(v -> runCommandAsync(v , false)).collect(Collectors.toList());
         return sequence(futures);
     }
 
-    private CompletableFuture<Void> runCommandAsync(String command) {
+    private CompletableFuture<Void> runCommandAsync(String command, boolean showLog) {
         return CompletableFuture.runAsync(() -> {
             try {
                 ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c", command);
@@ -76,28 +76,33 @@ class MergeManagerImpl implements MergeManager {
                 Process p = builder.start();
                 BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()));
                 String line;
-                do {
+                while (true) {
                     line = r.readLine();
-                } while (line != null);
+                    if (line == null) break;
+                    if (showLog) System.out.println(line);
+                }
             } catch (Exception e) {
                 System.out.println("ERROR");
             }
         }, Executors.newFixedThreadPool(8));
     }
 
-    private void runCommand(String command) {
+    private Void runCommand(String command, boolean showLog) {
         try {
             ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c", command);
             builder.redirectErrorStream(true);
             Process p = builder.start();
             BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()));
             String line;
-            do {
+            while (true) {
                 line = r.readLine();
-            } while (line != null);
+                if (line == null || line.isEmpty()) break;
+                if (showLog) System.out.println(line);
+            }
         } catch (Exception e) {
             System.out.println("ERROR");
         }
+        return null;
     }
 
     private <T> CompletableFuture<List<T>> sequence(List<CompletableFuture<T>> com) {

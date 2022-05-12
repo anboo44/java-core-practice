@@ -1,6 +1,9 @@
 package com.learn.java.ts.downloader;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -18,6 +21,7 @@ public interface DownloadManager {
 class DownloadManagerImpl implements DownloadManager {
 
     private final static String POSTFIX_PATH = "temp";
+    public final static int DEFAULT_BUFFER_SIZE = 1024;
 
     @Override
     public CompletableFuture<List<File>> download(List<URL> urls, String baseFolder) {
@@ -48,17 +52,19 @@ class DownloadManagerImpl implements DownloadManager {
         try {
             File tsFile = new File(folder + "/" + index + ".ts");
 
-            var request = HttpRequest.newBuilder()
-                    .uri(url.toURI())
-                    .version(HttpClient.Version.HTTP_2)
-                    .GET()
-                    .build();
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.connect();
+            InputStream input = connection.getInputStream();
 
-            HttpClient.newBuilder()
-                    .build()
-                    .send(request, HttpResponse.BodyHandlers.ofFile(tsFile.toPath()));
+            try (FileOutputStream outputStream = new FileOutputStream(tsFile, false)) {
+                int read;
+                byte[] bytes = new byte[DEFAULT_BUFFER_SIZE];
+                while ((read = input.read(bytes)) != -1) {
+                    outputStream.write(bytes, 0, read);
+                }
+            }
 
-            System.out.println("Download single file: " + index);
+            System.out.println("Download single file: " + tsFile.getPath());
             return tsFile;
         } catch (Exception e) {
             return null;
