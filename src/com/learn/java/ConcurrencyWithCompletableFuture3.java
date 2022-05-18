@@ -35,7 +35,7 @@ public class ConcurrencyWithCompletableFuture3 {
                                 .allOf(allOfWork2Futures.toArray(new CompletableFuture[0]));
                         return done.thenApplyAsync(v ->
 //                                allOfWork2Futures.stream().map(CompletionStage::toCompletableFuture)
-                                allOfWork2Futures.stream().map(v1 -> v1.toCompletableFuture())
+                                allOfWork2Futures.stream().map(CompletionStage::toCompletableFuture)
                                 .map(CompletableFuture::join) // Returns the result value when complete
                                 .collect(Collectors.toList()));
                     }).whenCompleteAsync((result, th) -> {
@@ -43,7 +43,7 @@ public class ConcurrencyWithCompletableFuture3 {
                     }).toCompletableFuture());
         });
         CompletableFuture<Void> done = CompletableFuture
-                .allOf(allOfWork1Futures.toArray(new CompletableFuture[allOfWork1Futures.size()]))
+                .allOf(allOfWork1Futures.toArray(new CompletableFuture[0]))
                 .whenComplete((result, th) -> {
                     // Do something when complete
                 });
