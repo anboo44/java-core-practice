@@ -1,6 +1,10 @@
 package com.learn.java;
 
 import java.security.SecureRandom;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Random;
 
 public class RandomKey {
 
@@ -14,7 +18,24 @@ public class RandomKey {
         return sb.toString();
     }
 
+    static String getSaltString(int length) {
+        var rd = new Random();
+        StringBuilder salt = new StringBuilder();
+        while (salt.length() < length) { // length of the random string.
+            int index = (int) (rd.nextFloat() * AB.length());
+            salt.append(AB.charAt(index));
+        }
+
+        return salt.toString();
+    }
+
     public static void main(String[] args) {
-        System.out.println(randomString(6));
+        List<String> x = new ArrayList<>();
+        for(long i = 0; i <= 1000_000; i++) {
+            x.add(randomString(6));
+        }
+        var y = new HashSet<>(x).size();
+        System.out.println("SIZE: " + x.size());
+        System.out.println("AFter: " + (y - x.size()));
     }
 }
